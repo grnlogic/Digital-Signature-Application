@@ -1,5 +1,6 @@
 package com.example.digitalsignature.controller;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -13,6 +14,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.example.digitalsignature.service.CryptoService;
 import com.example.digitalsignature.service.QRCodeService;
+import com.example.digitalsignature.service.SteganographyService;
 
 @RestController
 @RequestMapping("/api/signature")
@@ -24,6 +26,9 @@ public class SignatureController {
     
     @Autowired
     private QRCodeService qrCodeService;
+    
+    @Autowired
+    private SteganographyService steganographyService;
 
     @GetMapping("/status")
     public Map<String, String> getStatus() {
@@ -60,6 +65,39 @@ public class SignatureController {
 
         return result;
     }
+    
+    @PostMapping("/signWithWatermark")
+    public Map<String, String> signFileWithWatermark(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("ownerInfo") String ownerInfo,
+            @RequestParam(value = "designerName", required = false) String designerName
+    ) throws Exception {
+        // Apply watermark if it's an image
+        byte[] processedData = steganographyService.embedWatermark(file, ownerInfo);
+
+        // Hash the watermarked data with BLAKE3
+        String hash = cryptoService.hashWithBlake3(processedData);
+
+        // Sign hash with ECDSA
+        String signature = cryptoService.signData(hash.getBytes());
+
+        // Generate QR Code if designerName is provided
+        String qrCodeBase64 = null;
+        if (designerName != null && !designerName.isEmpty()) {
+            String qrContent = qrCodeService.createSignatureQRContent(hash, signature, designerName);
+            qrCodeBase64 = qrCodeService.generateQRCodeBase64(qrContent, 250, 250);
+        }
+
+        Map<String, String> result = new HashMap<>();
+        result.put("hash", hash);
+        result.put("signature", signature);
+        result.put("watermarked", "true");
+        if (qrCodeBase64 != null) {
+            result.put("qrCode", qrCodeBase64);
+        }
+
+        return result;
+    }
 
     @PostMapping("/verify")
     public Map<String, Boolean> verifyFile(
@@ -71,6 +109,37 @@ public class SignatureController {
 
         boolean valid = cryptoService.verifySignature(hash.getBytes(), signature);
         return Map.of("valid", valid);
+    }
+    
+    @PostMapping("/verifyWithWatermark")
+    public Map<String, Object> verifyFileWithWatermark(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("signature") String signature
+    ) throws Exception {
+        byte[] fileBytes = file.getBytes();
+        
+        // Try to extract watermark (if it's an image)
+        String watermark = null;
+        try {
+            watermark = steganographyService.extractWatermark(fileBytes);
+        } catch (IOException e) {
+            // Not an image or couldn't extract watermark
+        }
+        
+        String hash = cryptoService.hashWithBlake3(fileBytes);
+        boolean valid = cryptoService.verifySignature(hash.getBytes(), signature);
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("valid", valid);
+        
+        if (watermark != null) {
+            result.put("watermarkFound", true);
+            result.put("watermarkData", watermark);
+        } else {
+            result.put("watermarkFound", false);
+        }
+        
+        return result;
     }
     
     @PostMapping("/signCollective")
@@ -93,6 +162,38 @@ public class SignatureController {
             // Tanda tangan sebagai brand dan gabungkan dengan tanda tangan desainer
             String brandSignature = cryptoService.signData(hash.getBytes());
             // Format: HASH || Signature_Desainer || Signature_Brand
+            String collectiveSignature = hash + "||" + designerSignature + "||" + brandSignature;
+            result.put("signature", brandSignature);
+            result.put("collectiveSignature", collectiveSignature);
+        }
+        
+        return result;
+    }
+    
+    @PostMapping("/signCollectiveWithWatermark")
+    public Map<String, String> signCollectiveFileWithWatermark(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("role") String role,
+            @RequestParam("ownerInfo") String ownerInfo,
+            @RequestParam(value = "designerSignature", required = false) String designerSignature
+    ) throws Exception {
+        // Apply watermark if it's an image
+        byte[] processedData = steganographyService.embedWatermark(file, ownerInfo);
+        
+        String hash = cryptoService.hashWithBlake3(processedData);
+        
+        Map<String, String> result = new HashMap<>();
+        result.put("hash", hash);
+        result.put("watermarked", "true");
+        
+        if ("designer".equals(role)) {
+            // Sign as designer
+            String signature = cryptoService.signData(hash.getBytes());
+            result.put("signature", signature);
+        } else if ("brand".equals(role) && designerSignature != null) {
+            // Sign as brand and combine with designer signature
+            String brandSignature = cryptoService.signData(hash.getBytes());
+            // Format: HASH || Signature_Designer || Signature_Brand
             String collectiveSignature = hash + "||" + designerSignature + "||" + brandSignature;
             result.put("signature", brandSignature);
             result.put("collectiveSignature", collectiveSignature);
@@ -154,6 +255,46 @@ public class SignatureController {
         
         Map<String, String> result = new HashMap<>();
         result.put("qrCode", qrCodeBase64);
+        return result;
+    }
+    
+    /**
+     * Endpoint to extract watermark from an image
+     */
+    @PostMapping("/extractWatermark")
+    public Map<String, Object> extractWatermark(
+            @RequestParam("file") MultipartFile file
+    ) throws Exception {
+        byte[] fileBytes = file.getBytes();
+        Map<String, Object> result = new HashMap<>();
+        
+        try {
+            String watermark = steganographyService.extractWatermark(fileBytes);
+            if (watermark != null) {
+                result.put("success", true);
+                result.put("watermarkData", watermark);
+                
+                // Parse the watermark data for easier client processing
+                String[] parts = watermark.split(";");
+                Map<String, String> parsedData = new HashMap<>();
+                
+                for (String part : parts) {
+                    String[] keyValue = part.split(":");
+                    if (keyValue.length == 2) {
+                        parsedData.put(keyValue[0], keyValue[1]);
+                    }
+                }
+                
+                result.put("parsedWatermark", parsedData);
+            } else {
+                result.put("success", false);
+                result.put("message", "No watermark found in the image");
+            }
+        } catch (IOException e) {
+            result.put("success", false);
+            result.put("message", "Failed to process image: " + e.getMessage());
+        }
+        
         return result;
     }
 }
