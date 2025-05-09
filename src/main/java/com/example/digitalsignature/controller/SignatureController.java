@@ -73,25 +73,6 @@ public class SignatureController {
         return Map.of("valid", valid);
     }
     
-    /**
-     * Contoh CURL untuk endpoint ini:
-     * 
-     * 1. Tanda tangan biasa:
-     * curl -X POST -F "file=@/path/to/document.pdf" http://localhost:8080/api/signature/sign
-     * 
-     * 2. Verifikasi tanda tangan:
-     * curl -X POST -F "file=@/path/to/document.pdf" -F "signature=SIGNATURE_STRING" http://localhost:8080/api/signature/verify
-     * 
-     * 3. Tanda tangan sebagai Desainer:
-     * curl -X POST -F "file=@/path/to/document.pdf" -F "role=designer" http://localhost:8080/api/signature/signCollective
-     * 
-     * 4. Tanda tangan sebagai Brand (memerlukan tanda tangan Desainer):
-     * curl -X POST -F "file=@/path/to/document.pdf" -F "role=brand" -F "designerSignature=DESIGNER_SIGNATURE" http://localhost:8080/api/signature/signCollective
-     * 
-     * 5. Verifikasi tanda tangan kolektif:
-     * curl -X POST -F "file=@/path/to/document.pdf" -F "signature=HASH||DESIGNER_SIGNATURE||BRAND_SIGNATURE" http://localhost:8080/api/signature/verifyCollective
-     */
-    
     @PostMapping("/signCollective")
     public Map<String, String> signCollectiveFile(
             @RequestParam("file") MultipartFile file,
