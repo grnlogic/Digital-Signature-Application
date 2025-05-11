@@ -112,11 +112,19 @@ public class SignatureController {
             @RequestParam(value = "fontSize", defaultValue = "36") int fontSize,
             @RequestParam(value = "designerName", required = false) String designerName
     ) throws Exception {
-        // Apply visible watermark
+        // Add debugging
         byte[] processedData = visibleWatermarkService.addVisibleWatermark(file, watermarkText, opacity, fontSize);
-
+        
+        // Check if processedData is valid
+        if (processedData == null || processedData.length == 0) {
+            throw new RuntimeException("Failed to create watermarked image - no data returned");
+        }
+        
+        System.out.println("Processed data length: " + processedData.length);
+        
         // Convert processed image to base64
         String imageBase64 = Base64.getEncoder().encodeToString(processedData);
+        
         
         // Get file extension
         String extension = file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf(".") + 1);
@@ -142,7 +150,7 @@ public class SignatureController {
         result.put("hash", hash);
         result.put("signature", signature);
         result.put("visibleWatermark", "true");
-        result.put("watermarkedImage", imageDataUri);  // Menambahkan gambar yang sudah di-watermark
+        result.put("watermarkedImage", "data:image/jpeg;base64," + imageBase64);
         if (qrCodeBase64 != null) {
             result.put("qrCode", qrCodeBase64);
         }
