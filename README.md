@@ -1,6 +1,6 @@
 # Digital Signature Application
 
-Implementasi Digital Signature menggunakan ECDSA dan hashing dengan BLAKE3, serta invisible watermarking dengan steganografi.
+Implementasi Digital Signature menggunakan ECDSA dan hashing dengan BLAKE3, serta invisible watermarking dengan steganografi dan visible watermarking.
 
 ## Daftar Isi
 
@@ -14,12 +14,13 @@ Implementasi Digital Signature menggunakan ECDSA dan hashing dengan BLAKE3, sert
 
 ## Gambaran Umum
 
-Aplikasi ini menyediakan solusi tanda tangan digital berbasis web dengan fokus pada keamanan dan keabsahan dokumen. Menggunakan algoritma ECDSA untuk tanda tangan digital, BLAKE3 untuk hashing, dan steganografi untuk watermarking gambar, aplikasi ini memberikan cara aman untuk:
+Aplikasi ini menyediakan solusi tanda tangan digital berbasis web dengan fokus pada keamanan dan keabsahan dokumen. Menggunakan algoritma ECDSA untuk tanda tangan digital, BLAKE3 untuk hashing, steganografi untuk watermarking tak terlihat, dan visible watermarking untuk pemberian tanda air yang tampak, aplikasi ini memberikan cara aman untuk:
 
 1. Menandatangani dokumen digital
 2. Memverifikasi keabsahan tanda tangan
 3. Melakukan tanda tangan kolektif (multi-signature) di mana dua pihak dapat menandatangani dokumen secara terpisah
 4. Menyematkan watermark tersembunyi dalam gambar yang berisi informasi kepemilikan dan metadata
+5. Menambahkan watermark visual yang terlihat dengan level transparansi yang dapat disesuaikan
 
 ## Teknologi yang Digunakan
 
@@ -28,6 +29,7 @@ Aplikasi ini menyediakan solusi tanda tangan digital berbasis web dengan fokus p
   - ECDSA (Elliptic Curve Digital Signature Algorithm) untuk tanda tangan digital
   - BLAKE3 untuk hashing dokumen
 - **Steganografi**: Implementasi LSB (Least Significant Bit) untuk watermarking tak terlihat pada gambar
+- **Watermarking Visual**: Java AWT/Graphics2D untuk menambahkan watermark terlihat pada gambar
 
 ## Fitur
 
@@ -50,6 +52,14 @@ Aplikasi ini menyediakan solusi tanda tangan digital berbasis web dengan fokus p
 - Watermark berisi informasi pemilik, tanggal, dan ID unik
 - Dapat memverifikasi dokumen dan mengekstrak watermark secara terpisah
 - Tetap efektif bahkan jika gambar di-screenshot atau di-capture
+
+### 4. Visible Watermarking (Baru)
+
+- Menambahkan watermark teks yang terlihat jelas pada gambar
+- Mengatur level transparansi (opacity) watermark
+- Mengatur ukuran font dari watermark
+- Watermark tetap menjadi bagian dari gambar yang telah ditandatangani
+- Mendukung verifikasi tanda tangan pada gambar yang telah diberi watermark
 
 ## Instalasi
 
