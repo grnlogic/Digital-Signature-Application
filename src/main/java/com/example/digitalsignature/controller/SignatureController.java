@@ -1,6 +1,7 @@
 package com.example.digitalsignature.controller;
 
 import java.io.IOException;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -15,6 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.example.digitalsignature.service.CryptoService;
 import com.example.digitalsignature.service.QRCodeService;
 import com.example.digitalsignature.service.SteganographyService;
+import com.example.digitalsignature.service.VisibleWatermarkService;
 
 @RestController
 @RequestMapping("/api/signature")
@@ -29,6 +31,9 @@ public class SignatureController {
     
     @Autowired
     private SteganographyService steganographyService;
+
+    @Autowired
+    private VisibleWatermarkService visibleWatermarkService;
 
     @GetMapping("/status")
     public Map<String, String> getStatus() {
@@ -92,6 +97,52 @@ public class SignatureController {
         result.put("hash", hash);
         result.put("signature", signature);
         result.put("watermarked", "true");
+        if (qrCodeBase64 != null) {
+            result.put("qrCode", qrCodeBase64);
+        }
+
+        return result;
+    }
+
+    @PostMapping("/signWithVisibleWatermark")
+    public Map<String, String> signFileWithVisibleWatermark(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("watermarkText") String watermarkText,
+            @RequestParam(value = "opacity", defaultValue = "0.5") float opacity,
+            @RequestParam(value = "fontSize", defaultValue = "36") int fontSize,
+            @RequestParam(value = "designerName", required = false) String designerName
+    ) throws Exception {
+        // Apply visible watermark
+        byte[] processedData = visibleWatermarkService.addVisibleWatermark(file, watermarkText, opacity, fontSize);
+
+        // Convert processed image to base64
+        String imageBase64 = Base64.getEncoder().encodeToString(processedData);
+        
+        // Get file extension
+        String extension = file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf(".") + 1);
+        String mimeType = "image/" + (extension.equalsIgnoreCase("jpg") ? "jpeg" : extension);
+        
+        // Create full base64 image URI
+        String imageDataUri = "data:" + mimeType + ";base64," + imageBase64;
+
+        // Hash the watermarked data with BLAKE3
+        String hash = cryptoService.hashWithBlake3(processedData);
+
+        // Sign hash with ECDSA
+        String signature = cryptoService.signData(hash.getBytes());
+
+        // Generate QR Code if designerName is provided
+        String qrCodeBase64 = null;
+        if (designerName != null && !designerName.isEmpty()) {
+            String qrContent = qrCodeService.createSignatureQRContent(hash, signature, designerName);
+            qrCodeBase64 = qrCodeService.generateQRCodeBase64(qrContent, 250, 250);
+        }
+
+        Map<String, String> result = new HashMap<>();
+        result.put("hash", hash);
+        result.put("signature", signature);
+        result.put("visibleWatermark", "true");
+        result.put("watermarkedImage", imageDataUri);  // Menambahkan gambar yang sudah di-watermark
         if (qrCodeBase64 != null) {
             result.put("qrCode", qrCodeBase64);
         }
