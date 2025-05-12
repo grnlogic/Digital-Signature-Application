@@ -46,7 +46,7 @@ public class CryptoService {
         return ecdsaVerify.verify(signature);
     }
 
-    public PublicKey getPublicKey() {
+    public PublicKey getPublicKey() {   
         return keyPair.getPublic();
     }
 }
