@@ -31,3 +31,8 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# .gitignore
+.env
+*.p12
+*.jks

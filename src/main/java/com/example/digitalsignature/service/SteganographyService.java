@@ -6,9 +6,14 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Iterator;
 import java.util.UUID;
 
+import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
+import javax.imageio.ImageWriteParam;
+import javax.imageio.ImageWriter;
+import javax.imageio.stream.ImageOutputStream;
 
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -17,18 +22,55 @@ import org.springframework.web.multipart.MultipartFile;
 public class SteganographyService {
 
     /**
+ * Menerapkan kompresi sebelum konversi ke base64
+ * @param imageData Data gambar yang akan dikompresi
+ * @param quality Kualitas kompresi (0.0-1.0)
+ * @return Data gambar terkompresi
+ */
+public byte[] compressBeforeBase64(byte[] imageData, float quality) throws IOException {
+    // Baca gambar dari byte array
+    ByteArrayInputStream inputStream = new ByteArrayInputStream(imageData);
+    BufferedImage image = ImageIO.read(inputStream);
+    
+    // Siapkan output stream
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    
+    // Buat objek image writer
+    Iterator<ImageWriter> writers = ImageIO.getImageWritersByFormatName("jpeg");
+    if (!writers.hasNext()) throw new IOException("No JPEG writer found");
+    
+    ImageWriter writer = writers.next();
+    ImageWriteParam param = writer.getDefaultWriteParam();
+    
+    // Set kompresi
+    param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
+    param.setCompressionQuality(quality); // 0.0 (buruk) hingga 1.0 (terbaik)
+    
+    // Tulis gambar terkompresi
+    ImageOutputStream imageOutputStream = ImageIO.createImageOutputStream(outputStream);
+    writer.setOutput(imageOutputStream);
+    writer.write(null, new IIOImage(image, null, null), param);
+    writer.dispose();
+    
+    return outputStream.toByteArray();
+}
+
+    /**
      * Embeds an invisible watermark into an image file
      * @param imageFile The original image file
      * @param ownerInfo The owner information to embed
      * @return The watermarked image as byte array
      */
-    public byte[] embedWatermark(MultipartFile imageFile, String ownerInfo) throws IOException {
-        // Check if file is an image
-        if (!isImage(imageFile)) {
-            return imageFile.getBytes(); // Return original if not an image
+    public byte[] embedWatermark(MultipartFile file, String ownerInfo) throws IOException {
+        // Tambahkan validasi dan logging
+        System.out.println("Processing file: " + file.getOriginalFilename() + ", size: " + file.getSize() + " bytes");
+        
+        if (!isValidImageFormat(file)) {
+            System.out.println("WARNING: Not a supported image format, returning original file");
+            return file.getBytes();
         }
         
-        BufferedImage originalImage = ImageIO.read(new ByteArrayInputStream(imageFile.getBytes()));
+        BufferedImage originalImage = ImageIO.read(new ByteArrayInputStream(file.getBytes()));
         if (originalImage == null) {
             throw new IOException("Could not read image file");
         }
@@ -41,9 +83,18 @@ public class SteganographyService {
         
         // Convert back to byte array
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        ImageIO.write(watermarkedImage, getImageFormat(imageFile.getOriginalFilename()), outputStream);
+        ImageIO.write(watermarkedImage, getImageFormat(file.getOriginalFilename()), outputStream);
         
-        return outputStream.toByteArray();
+        byte[] resultBytes = outputStream.toByteArray();
+        
+        // Validasi hasil sebelum return
+        if (resultBytes == null || resultBytes.length == 0) {
+            System.out.println("ERROR: Watermarking resulted in empty data");
+            return file.getBytes(); // Return original as fallback
+        }
+        
+        System.out.println("Successfully applied watermark, result size: " + resultBytes.length + " bytes");
+        return resultBytes;
     }
     
     /**
@@ -223,5 +274,44 @@ public class SteganographyService {
     private String getImageFormat(String filename) {
         String extension = filename.substring(filename.lastIndexOf(".") + 1).toLowerCase();
         return extension.equals("jpg") ? "jpeg" : extension;
+    }
+    
+    /**
+     * Validates if the image format is supported
+     */
+    private boolean isValidImageFormat(MultipartFile file) {
+        String[] supportedFormats = new String[] {"jpg", "jpeg", "png", "gif", "bmp"};
+        String filename = file.getOriginalFilename();
+        if (filename == null) return false;
+        
+        String extension = filename.substring(filename.lastIndexOf(".") + 1).toLowerCase();
+        for (String format : supportedFormats) {
+            if (format.equals(extension)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Metode baru di SteganographyService
+    public byte[] compressImage(byte[] imageData, float quality) throws IOException {
+        // Kode untuk kompresi gambar
+        BufferedImage image = ImageIO.read(new ByteArrayInputStream(imageData));
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        
+        // Kompresi dengan JPEG
+        Iterator<ImageWriter> writers = ImageIO.getImageWritersByFormatName("jpeg");
+        ImageWriter writer = writers.next();
+        ImageWriteParam param = writer.getDefaultWriteParam();
+        param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
+        param.setCompressionQuality(quality); // 0.7 = 70% quality
+        
+        ImageOutputStream ios = ImageIO.createImageOutputStream(outputStream);
+        writer.setOutput(ios);
+        writer.write(null, new IIOImage(image, null, null), param);
+        writer.dispose();
+        ios.close();
+        
+        return outputStream.toByteArray();
     }
 }
