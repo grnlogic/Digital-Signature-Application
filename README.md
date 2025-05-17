@@ -115,19 +115,19 @@ cd "Digital Signature/digital-signature"
 
 ### Endpoint API
 
-| Endpoint                                     | Metode | Deskripsi                               | Parameter                                                                                                                                 |
-| -------------------------------------------- | ------ | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `/api/signature/sign`                        | POST   | Menandatangani dokumen                  | `file`: Dokumen yang akan ditandatangani<br>`designerName`: Nama desainer (opsional)                                                      |
-| `/api/signature/verify`                      | POST   | Memverifikasi tanda tangan              | `file`: Dokumen<br>`signature`: Tanda tangan                                                                                              |
-| `/api/signature/signWithWatermark`           | POST   | Menandatangani dengan watermark         | `file`: Gambar<br>`ownerInfo`: Info pemilik<br>`designerName`: Nama (opsional)                                                            |
-| `/api/signature/verifyWithWatermark`         | POST   | Verifikasi dengan watermark             | `file`: Gambar<br>`signature`: Tanda tangan                                                                                               |
-| `/api/signature/signWithVisibleWatermark`    | POST   | Menambahkan watermark terlihat          | `file`: Gambar<br>`watermarkText`: Teks watermark<br>`opacity`: Transparansi (0.0-1.0)<br>`fontSize`: Ukuran font                         |
-| `/api/signature/extractWatermark`            | POST   | Ekstrak watermark saja                  | `file`: Gambar yang memiliki watermark                                                                                                    |
-| `/api/signature/signCollective`              | POST   | Tanda tangan kolektif                   | `file`: Dokumen<br>`role`: "designer"/"brand"<br>`designerSignature`: Tanda tangan designer (diperlukan jika role=brand)                  |
-| `/api/signature/signCollectiveWithWatermark` | POST   | Tanda tangan kolektif dengan watermark  | `file`: Gambar<br>`role`: "designer"/"brand"<br>`ownerInfo`: Info pemilik<br>`designerSignature`: Tanda tangan designer (jika role=brand) |
-| `/api/signature/verifyCollective`            | POST   | Verifikasi tanda tangan kolektif        | `file`: Dokumen<br>`signature`: Tanda tangan kolektif (format: HASH\|\|DESIGNER_SIGNATURE\|\|BRAND_SIGNATURE)                             |
-| `/api/signature/generateQR`                  | POST   | Generate QR Code dari data tanda tangan | `hash`: Hash dokumen<br>`signature`: Tanda tangan<br>`designerName`: Nama desainer                                                        |
-| `/api/signature/status`                      | GET    | Memeriksa status API                    | -                                                                                                                                         |
+| Endpoint                                     | Metode | Deskripsi                               | Parameter                                                                                                                                                                                                                                                                    |
+| -------------------------------------------- | ------ | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/api/signature/sign`                        | POST   | Menandatangani dokumen                  | `file`: Dokumen yang akan ditandatangani<br>`designerName`: Nama desainer (opsional)<br>`validityDays`: Masa berlaku dalam hari (opsional)<br>`validityMonths`: Masa berlaku dalam bulan (opsional)                                                                          |
+| `/api/signature/verify`                      | POST   | Memverifikasi tanda tangan              | `file`: Dokumen<br>`signature`: Tanda tangan                                                                                                                                                                                                                                 |
+| `/api/signature/signWithWatermark`           | POST   | Menandatangani dengan watermark         | `file`: Gambar<br>`ownerInfo`: Info pemilik<br>`designerName`: Nama (opsional)                                                                                                                                                                                               |
+| `/api/signature/verifyWithWatermark`         | POST   | Verifikasi dengan watermark             | `file`: Gambar<br>`signature`: Tanda tangan                                                                                                                                                                                                                                  |
+| `/api/signature/signWithVisibleWatermark`    | POST   | Menambahkan watermark terlihat          | `file`: Gambar<br>`watermarkText`: Teks watermark<br>`opacity`: Transparansi (0.0-1.0)<br>`fontSize`: Ukuran font<br>`designerName`: Nama desainer (opsional)<br>`validityDays`: Masa berlaku dalam hari (opsional)<br>`validityMonths`: Masa berlaku dalam bulan (opsional) |
+| `/api/signature/extractWatermark`            | POST   | Ekstrak watermark saja                  | `file`: Gambar yang memiliki watermark                                                                                                                                                                                                                                       |
+| `/api/signature/signCollective`              | POST   | Tanda tangan kolektif                   | `file`: Dokumen<br>`role`: "designer"/"brand"<br>`designerSignature`: Tanda tangan designer (diperlukan jika role=brand)                                                                                                                                                     |
+| `/api/signature/signCollectiveWithWatermark` | POST   | Tanda tangan kolektif dengan watermark  | `file`: Gambar<br>`role`: "designer"/"brand"<br>`ownerInfo`: Info pemilik<br>`designerSignature`: Tanda tangan designer (jika role=brand)                                                                                                                                    |
+| `/api/signature/verifyCollective`            | POST   | Verifikasi tanda tangan kolektif        | `file`: Dokumen<br>`signature`: Tanda tangan kolektif (format: HASH\|\|DESIGNER_SIGNATURE\|\|BRAND_SIGNATURE)                                                                                                                                                                |
+| `/api/signature/generateQR`                  | POST   | Generate QR Code dari data tanda tangan | `hash`: Hash dokumen<br>`signature`: Tanda tangan<br>`designerName`: Nama desainer                                                                                                                                                                                           |
+| `/api/signature/status`                      | GET    | Memeriksa status API                    | -                                                                                                                                                                                                                                                                            |
 
 ## Contoh CURL
 
@@ -160,7 +160,15 @@ curl -X POST -F "file=@/path/to/image.jpg" -F "watermarkText=COPYRIGHT 2023" \
   http://localhost:8080/api/signature/signWithVisibleWatermark
 ```
 
-### 5. Tanda Tangan Kolektif dengan Watermark
+### 5. Tanda Tangan dengan Masa Berlaku
+
+```bash
+curl -X POST -F "file=@/path/to/document.pdf" -F "designerName=John Designer" \
+  -F "validityMonths=3" \
+  http://localhost:8080/api/signature/sign
+```
+
+### 6. Tanda Tangan Kolektif dengan Watermark
 
 ```bash
 curl -X POST -F "file=@/path/to/image.jpg" -F "role=designer" -F "ownerInfo=John Doe" \
